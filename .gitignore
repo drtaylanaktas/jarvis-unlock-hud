@@ -9,3 +9,19 @@ JarvisHUD.app/
 
 # macOS
 .DS_Store
+
+# Secrets & credentials — NEVER commit
+.env
+core/.env
+token.json
+credentials.json
+core/token.json
+core/credentials.json
+*.pkl
+
+# Python
+core/.venv/
+__pycache__/
+*.pyc
+.config.toml
+core/config.toml

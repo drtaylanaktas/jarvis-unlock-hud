@@ -1,0 +1,55 @@
+# J.A.R.V.I.S. core — configuration
+# Copy to config.toml and edit. Secrets (API keys) go in .env, NOT here.
+
+[assistant]
+# How Jarvis addresses you.
+address = "Doctor"
+# Spoken language hint for replies ("English", "Turkish", or "mixed").
+language = "English"
+
+[brain]
+# Claude model. Default is the most capable; switch to "claude-sonnet-4-6" for lower latency.
+model = "claude-opus-4-8"
+# effort: low|medium|high|max — "low" keeps voice replies snappy.
+effort = "low"
+# Keep replies short & speakable; hard ceiling on output tokens.
+max_tokens = 1024
+
+[stt]
+# faster-whisper model size: tiny|base|small|medium. "base" is a good M4 balance.
+model = "base"
+language = "en"          # or "tr"; "auto" to detect
+
+[tts]
+# ElevenLabs voice id (British male recommended). Find IDs in your ElevenLabs voice library.
+voice_id = "JBFqnCBsd6RMkjVDRZzb"   # example: "George" (British). Replace with your choice.
+model_id = "eleven_turbo_v2_5"      # low-latency streaming model
+
+[server]
+host = "127.0.0.1"
+port = 8765
+
+[hotkey]
+# Push-to-talk combo handled by the Swift HUD (informational here).
+combo = "opt+cmd+j"
+
+[weather]
+# For the briefing. Defaults to Istanbul; change to your location.
+latitude = 41.0082
+longitude = 28.9784
+label = "Istanbul"
+
+[news]
+# RSS feeds for the "gündem" headlines. Add/remove freely.
+feeds = [
+  "https://feeds.bbci.co.uk/news/world/rss.xml",
+]
+max_items = 5
+
+[google]
+# Read-only scopes. token.json is produced by google_auth.py (gitignored).
+scopes = [
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/tasks.readonly",
+]
