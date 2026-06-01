@@ -13,6 +13,7 @@ import websockets
 from dotenv import load_dotenv
 
 from google_client import load_config
+import audio                       # for audio.INTERRUPT (mute)
 from audio import Recorder
 from stt import STT
 from tts import TTS
