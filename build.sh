@@ -22,6 +22,7 @@ swiftc -O \
 
 echo "==> HUD kopyalanıyor"
 cp "$ROOT/hud/index.html" "$RES/index.html"
+cp "$ROOT/hud/assistant.html" "$RES/assistant.html"
 # Opsiyonel ses dosyaları (kullanıcının kendi yasal kopyaları) varsa pakete koy.
 # Bunlar repoda YOKTUR; .gitignore ile dışlanır.
 for f in "$ROOT"/hud/intro.* "$ROOT"/hud/voice.*; do

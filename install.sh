@@ -39,10 +39,58 @@ cat > "$PLIST" <<PLIST
 </plist>
 PLIST
 
-echo "==> Yükleniyor"
+echo "==> Yükleniyor (HUD ajanı)"
 launchctl bootout "gui/$UID_NUM/$LABEL" 2>/dev/null || true
 sleep 1
 launchctl bootstrap "gui/$UID_NUM" "$PLIST"
 
-echo "✅ Kuruldu. Ekran kilidini açtığınızda J.A.R.V.I.S. devreye girer."
-echo "   Hemen denemek için: \"$APP_BIN\" --demo"
+# ---- Optional: conversational assistant core (Python) -------------------
+CORE="$ROOT/core"
+if [ -d "$CORE" ] && [ "${JARVIS_SKIP_CORE:-0}" != "1" ]; then
+  echo "==> Asistan çekirdeği (Python) kuruluyor"
+  PY="$(command -v python3.12 || command -v python3)"
+  if [ ! -d "$CORE/.venv" ]; then
+    "$PY" -m venv "$CORE/.venv"
+  fi
+  "$CORE/.venv/bin/python" -m pip install --quiet --upgrade pip
+  "$CORE/.venv/bin/python" -m pip install --quiet -r "$CORE/requirements.txt"
+
+  CORE_PLIST="$HOME/Library/LaunchAgents/com.jarvis.core.plist"
+  echo "==> LaunchAgent yazılıyor: $CORE_PLIST"
+  cat > "$CORE_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.jarvis.core</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$CORE/.venv/bin/python</string>
+    <string>$CORE/jarvis.py</string>
+  </array>
+  <key>WorkingDirectory</key><string>$CORE</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ProcessType</key><string>Interactive</string>
+  <key>StandardOutPath</key><string>$CORE/jarvis-core.log</string>
+  <key>StandardErrorPath</key><string>$CORE/jarvis-core.log</string>
+</dict>
+</plist>
+PLIST
+  launchctl bootout "gui/$UID_NUM/com.jarvis.core" 2>/dev/null || true
+  sleep 1
+  launchctl bootstrap "gui/$UID_NUM" "$CORE_PLIST" || true
+
+  echo
+  echo "ℹ️  Asistan için gerekli (bir kez):"
+  echo "    1) core/.env doldur (ANTHROPIC_API_KEY, ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID)"
+  echo "    2) core/config.toml ayarla (ses, konum, dil)"
+  echo "    3) Google: core/credentials.json koy + '$CORE/.venv/bin/python $CORE/google_auth.py'"
+  echo "    4) İLK push-to-talk'ta macOS Mikrofon izni isteyecek — izin ver."
+fi
+
+echo
+echo "✅ Kuruldu."
+echo "   • Kilit açılışı: ekranı kilitleyip açın (sinematik HUD)."
+echo "   • Asistan: ⌥⌘J — konuşmak için dokun, bitince tekrar dokun."
+echo "   • HUD demo: \"$APP_BIN\" --demo"
