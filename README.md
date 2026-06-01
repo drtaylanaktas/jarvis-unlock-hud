@@ -1,5 +1,7 @@
 # J.A.R.V.I.S. Unlock HUD
 
+![J.A.R.V.I.S. Unlock HUD](docs/demo.png)
+
 A cinematic, Iron Man / J.A.R.V.I.S.-style greeting for macOS that fires every time
 you **unlock your Mac**. A full-screen arc-reactor HUD fades in over your desktop —
 spinning reactor rings, boot-up text, a live clock, and fake system telemetry — plays
