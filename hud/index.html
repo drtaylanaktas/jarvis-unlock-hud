@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>J.A.R.V.I.S.</title>
+<style>
+  :root{
+    --cyan:#5ad9ff;
+    --cyan-dim:#2b8bb0;
+    --gold:#ffcf6b;
+    --glow:0 0 6px rgba(90,217,255,.9), 0 0 18px rgba(90,217,255,.5);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{
+    width:100%;height:100%;overflow:hidden;
+    background:transparent;
+    font-family:"Helvetica Neue",-apple-system,"SF Mono",Menlo,monospace;
+    color:var(--cyan);
+    -webkit-user-select:none;user-select:none;cursor:none;
+  }
+  /* full-screen dim vignette so HUD pops over the desktop */
+  #stage{
+    position:fixed;inset:0;
+    background:radial-gradient(ellipse at center, rgba(0,8,16,.55) 0%, rgba(0,4,10,.88) 70%, rgba(0,2,6,.96) 100%);
+    opacity:0;
+    transition:opacity .6s ease;
+  }
+  #stage.on{opacity:1}
+  #stage.off{opacity:0;transition:opacity 1s ease}
+
+  /* subtle scanline texture */
+  #stage::after{
+    content:"";position:fixed;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(90,217,255,.035) 0 1px, transparent 1px 3px);
+    mix-blend-mode:screen;
+  }
+
+  /* ---- center reactor ---- */
+  .reactor-wrap{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:340px;height:340px;display:grid;place-items:center;
+    filter:drop-shadow(0 0 22px rgba(90,217,255,.55));
+  }
+  .ring{position:absolute;border-radius:50%;border:1px solid rgba(90,217,255,.35)}
+  .ring.r1{width:340px;height:340px;border-width:1px;border-style:dashed;animation:spin 18s linear infinite}
+  .ring.r2{width:268px;height:268px;border-top-color:var(--cyan);border-right-color:transparent;border-bottom-color:var(--cyan);border-left-color:transparent;border-width:2px;animation:spin 7s linear infinite reverse}
+  .ring.r3{width:210px;height:210px;border:1px solid rgba(255,207,107,.4);animation:spin 11s linear infinite}
+  .core{
+    width:140px;height:140px;border-radius:50%;
+    background:radial-gradient(circle at center, #eafdff 0%, var(--cyan) 28%, var(--cyan-dim) 58%, rgba(20,60,80,.2) 80%, transparent 100%);
+    box-shadow:0 0 40px rgba(90,217,255,.9), inset 0 0 30px rgba(255,255,255,.6);
+    animation:pulse 2.4s ease-in-out infinite;
+  }
+  .triangle{
+    position:absolute;width:64px;height:64px;
+    background:conic-gradient(from 0deg, rgba(234,253,255,.95), rgba(90,217,255,.2), rgba(234,253,255,.95));
+    clip-path:polygon(50% 6%, 95% 90%, 5% 90%);
+    animation:spin 9s linear infinite;opacity:.85;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:.92}50%{transform:scale(1.06);opacity:1}}
+
+  /* ---- corner readouts ---- */
+  .panel{position:absolute;font-size:12px;letter-spacing:.12em;line-height:1.7;text-shadow:var(--glow);opacity:.92}
+  .tl{top:34px;left:40px}
+  .tr{top:34px;right:40px;text-align:right}
+  .bl{bottom:36px;left:40px}
+  .br{bottom:36px;right:40px;text-align:right}
+  .label{color:var(--cyan-dim);font-size:10px;letter-spacing:.22em}
+  .big{font-size:15px;color:#cdf3ff}
+  .gold{color:var(--gold)}
+
+  /* telemetry bars */
+  .bar{width:190px;height:6px;background:rgba(90,217,255,.12);border:1px solid rgba(90,217,255,.3);margin:3px 0 9px;position:relative;overflow:hidden}
+  .bar > i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--cyan-dim),var(--cyan));width:0;box-shadow:var(--glow);transition:width .9s ease}
+  .br .bar{margin-left:auto}
+
+  /* boot console */
+  #boot{
+    position:absolute;left:50%;bottom:14%;transform:translateX(-50%);
+    width:min(720px,80vw);text-align:center;font-size:18px;letter-spacing:.18em;
+    text-shadow:var(--glow);min-height:30px;
+  }
+  #boot .line{opacity:0;transition:opacity .35s ease}
+  #boot .line.show{opacity:1}
+  #boot .welcome{font-size:30px;color:#eafdff;letter-spacing:.22em}
+  .caret{display:inline-block;width:10px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  #clock{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) translateY(220px);text-align:center}
+  #time{font-size:34px;letter-spacing:.18em;color:#eafdff;text-shadow:var(--glow)}
+  #date{font-size:12px;letter-spacing:.3em;color:var(--cyan-dim);margin-top:4px}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="reactor-wrap">
+    <div class="ring r1"></div>
+    <div class="ring r2"></div>
+    <div class="ring r3"></div>
+    <div class="triangle"></div>
+    <div class="core"></div>
+  </div>
+
+  <div class="panel tl">
+    <div class="label">SYSTEM</div>
+    <div class="big">J.A.R.V.I.S.</div>
+    <div>Just A Rather Very<br>Intelligent System</div>
+    <div class="gold" style="margin-top:8px">v 4.8 · ONLINE</div>
+  </div>
+
+  <div class="panel tr">
+    <div class="label">SESSION</div>
+    <div class="big">DR. AKTAŞ</div>
+    <div>CLEARANCE · <span class="gold">ALPHA</span></div>
+    <div id="loc">LOCATION · LOCKED</div>
+  </div>
+
+  <div class="panel bl">
+    <div class="label">DIAGNOSTICS</div>
+    <div>CPU <div class="bar"><i data-t="62"></i></div></div>
+    <div>MEMORY <div class="bar"><i data-t="48"></i></div></div>
+    <div>POWER <div class="bar"><i data-t="88"></i></div></div>
+  </div>
+
+  <div class="panel br">
+    <div class="label">NETWORK</div>
+    <div>UPLINK <div class="bar"><i data-t="74"></i></div></div>
+    <div>SECURITY <div class="bar"><i data-t="96"></i></div></div>
+    <div class="gold" id="status">SCANNING…</div>
+  </div>
+
+  <div id="clock"><div id="time">--:--</div><div id="date"></div></div>
+
+  <div id="boot"></div>
+</div>
+
+<script>
+(function(){
+  const stage = document.getElementById('stage');
+
+  // ---- clock ----
+  function tick(){
+    const d = new Date();
+    const p = n => String(n).padStart(2,'0');
+    document.getElementById('time').textContent = p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+    document.getElementById('date').textContent =
+      d.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}).toUpperCase();
+  }
+  tick(); setInterval(tick,1000);
+
+  // ---- AUDIO ----
+  // 1) Kullanıcının kendi dosyası varsa onu çal (intro.m4a / .mp3 / .wav / .aac).
+  // 2) Yoksa: aynı enerjide ÖZGÜN bir hard-rock gitar riff'i sentezle (orijinal kaydın kopyası değil).
+  let trackEl=null;
+  function tryLocalTrack(){
+    return new Promise(res=>{
+      const exts=['m4a','mp3','wav','aac'];
+      let i=0; const a=new Audio(); a.volume=0.5;
+      function next(){
+        if(i>=exts.length){res(null);return;}
+        a.src='intro.'+exts[i++];
+        a.play().then(()=>res(a)).catch(next);
+      }
+      a.addEventListener('error',next);
+      next();
+    });
+  }
+  // sesi yumuşakça hedef seviyeye taşı (ducking + fade-out için)
+  function rampVol(a,target,ms){
+    if(!a) return;
+    const start=a.volume, t0=performance.now();
+    (function step(){
+      const k=Math.min(1,(performance.now()-t0)/ms);
+      a.volume=Math.max(0,Math.min(1,start+(target-start)*k));
+      if(k<1) requestAnimationFrame(step);
+    })();
+  }
+  function synthRiff(){
+    try{
+      const ctx=new (window.AudioContext||window.webkitAudioContext)();
+      if(ctx.state==='suspended') ctx.resume();
+      function makeDist(k){const n=44100,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i*2/n-1;c[i]=(3+k)*x*20*Math.PI/180/(Math.PI+k*Math.abs(x));}return c;}
+      const shaper=ctx.createWaveShaper();shaper.curve=makeDist(60);shaper.oversample='4x';
+      const master=ctx.createGain();master.gain.value=0.3;
+      shaper.connect(master);master.connect(ctx.destination);
+      function chord(root,t,dur){
+        [root,root*1.5,root*2].forEach((f,idx)=>{
+          const o=ctx.createOscillator(),g=ctx.createGain();
+          o.type='square';o.frequency.value=f;
+          g.gain.setValueAtTime(0.0001,t);
+          g.gain.exponentialRampToValueAtTime(idx?0.18:0.3,t+0.012);
+          g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+          o.connect(g).connect(shaper);o.start(t);o.stop(t+dur+0.05);
+        });
+      }
+      const A=110,C=130.8,D=146.8,E=164.8,G=196;
+      const seq=[A,A,G,A, D,D,C,A, E,E,D,C, A,A,A,0];
+      const t0=ctx.currentTime+0.05, step=0.32;
+      seq.forEach((f,i)=>{ if(f) chord(f,t0+i*step,0.27); });
+    }catch(e){}
+  }
+  // Jarvis'in kendi ses dosyası (voice.mp3, ~4.1s)
+  function playVoice(){
+    const v=new Audio('voice.mp3'); v.volume=1.0;
+    v.play().catch(()=>{});
+  }
+  async function startAudio(){
+    trackEl=await tryLocalTrack();
+    if(!trackEl){ synthRiff(); return; }
+    // Jarvis sesi ~3.8s'te başlıyor → müziği o anda kıs (ducking),
+    // ses bitince hafif yükselt, en sonda küt kesilmeden yumuşakça kapat.
+    setTimeout(()=>rampVol(trackEl,0.12,500), 3500);  // duck (Jarvis konuşurken)
+    setTimeout(()=>rampVol(trackEl,0.42,600), 8100);  // ses bitince swell
+    setTimeout(()=>rampVol(trackEl,0.0,1700), 8900);  // smooth fade-out
+  }
+
+  // ---- boot text sequence ----
+  const lines = [
+    {t:'INITIALIZING  J.A.R.V.I.S.', d:0},
+    {t:'BIOMETRICS VERIFIED', d:1100},
+    {t:'ALL SYSTEMS ONLINE', d:2100},
+    {t:'WELCOME BACK, DOCTOR', d:3100, big:true},
+  ];
+  const boot = document.getElementById('boot');
+  function runBoot(){
+    lines.forEach(L=>{
+      setTimeout(()=>{
+        boot.innerHTML = '<span class="line show '+(L.big?'welcome':'')+'">'+L.t+'<span class="caret">▌</span></span>';
+      }, L.d);
+    });
+  }
+
+  // ---- fill telemetry bars ----
+  function fillBars(){
+    document.querySelectorAll('.bar > i').forEach(b=>{
+      setTimeout(()=>{ b.style.width = b.dataset.t+'%'; }, 350);
+    });
+    setTimeout(()=>{ document.getElementById('status').textContent='SECURE'; }, 1600);
+  }
+
+  // ---- master sequence ----
+  function start(){
+    requestAnimationFrame(()=> stage.classList.add('on'));
+    startAudio();
+    setTimeout(playVoice, 3800);   // Jarvis kendi sesiyle karşılar
+    fillBars();
+    runBoot();
+    // graceful fade-out near the end of the window
+    setTimeout(()=>{ stage.classList.remove('on'); stage.classList.add('off'); }, 10200);
+  }
+  window.addEventListener('load', start);
+})();
+</script>
+</body>
+</html>

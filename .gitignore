@@ -1,0 +1,11 @@
+# Telifli ses dosyaları — repoya DAHİL DEĞİL.
+# Kullanıcı kendi yasal kopyasını hud/ altına koyar (bkz. README).
+hud/intro.*
+hud/voice.*
+
+# Üretilmiş çıktı / build artefaktları
+JarvisHUD.app/
+*.log
+
+# macOS
+.DS_Store
