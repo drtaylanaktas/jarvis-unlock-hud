@@ -21,6 +21,9 @@ from tools import DISPATCH
 
 load_dotenv(override=True)  # core/.env -> ANTHROPIC_API_KEY, ELEVENLABS_API_KEY, ... (wins over empty injected env)
 
+# Spoken commands that instantly stop Jarvis (no brain call).
+STOPWORDS = {"mute", "sus", "dur", "kes", "stop", "sessiz", "sessizleş", "sus bakalım", "kes sesini"}
+
 
 class Hub:
     def __init__(self):
@@ -28,6 +31,7 @@ class Hub:
         self.clients: set = set()
         self.loop = asyncio.get_event_loop()
         self.busy = False
+        self.task = None  # current turn (cancellable)
         # Level callbacks fire from audio threads -> bounce onto the loop.
         self.recorder = Recorder(on_level=lambda v: self._emit_level(v))
         self.stt = STT(self.cfg)
@@ -59,32 +63,54 @@ class Hub:
         if self.busy:
             return
         self.busy = True
+        audio.INTERRUPT.clear()   # fresh turn — allow audio again
         try:
-            audio = self.recorder.stop()
+            recorded = self.recorder.stop()
             await self.broadcast({"type": "state", "value": "thinking"})
-            text = await self.stt.transcribe(audio)
+            text = await self.stt.transcribe(recorded)
             if not text:
-                await self.broadcast({"type": "end"})
                 return
             await self.broadcast({"type": "transcript", "text": text})
 
-            spoke_state = {"started": False}
+            # Spoken stop command -> just go quiet, no brain call.
+            if text.strip().lower().strip(".!?, ") in STOPWORDS:
+                return
 
-            async def on_sentence(sentence: str) -> None:
-                if not spoke_state["started"]:
-                    spoke_state["started"] = True
-                    await self.broadcast({"type": "state", "value": "speaking"})
-                await self.broadcast({"type": "response", "text": sentence, "final": False})
-                await self.tts.speak(sentence)
-
-            async def on_tool(name: str) -> None:
-                await self.broadcast({"type": "tool", "name": name})
-
-            await self.brain.respond(text, on_sentence, on_tool)
-            await self.broadcast({"type": "response", "text": "", "final": True})
+            self.task = asyncio.create_task(self._run_turn(text))
+            try:
+                await self.task
+            except asyncio.CancelledError:
+                pass  # muted mid-turn
         except Exception as e:  # keep the hub alive
             await self.broadcast({"type": "error", "message": str(e)})
         finally:
+            self.task = None
+            await self.broadcast({"type": "end"})
+            await self.broadcast({"type": "state", "value": "idle"})
+            self.busy = False
+
+    async def _run_turn(self, text: str) -> None:
+        started = {"v": False}
+
+        async def on_sentence(sentence: str) -> None:
+            if not started["v"]:
+                started["v"] = True
+                await self.broadcast({"type": "state", "value": "speaking"})
+            await self.broadcast({"type": "response", "text": sentence, "final": False})
+            await self.tts.speak(sentence)
+
+        async def on_tool(name: str) -> None:
+            await self.broadcast({"type": "tool", "name": name})
+
+        await self.brain.respond(text, on_sentence, on_tool)
+        await self.broadcast({"type": "response", "text": "", "final": True})
+
+    async def _cancel(self) -> None:
+        """Instant mute: stop playback now and abort the current turn."""
+        audio.INTERRUPT.set()                 # break the playback loop immediately
+        if self.task and not self.task.done():
+            self.task.cancel()                # _on_ptt_up's finally cleans up
+        else:
             await self.broadcast({"type": "end"})
             await self.broadcast({"type": "state", "value": "idle"})
             self.busy = False
@@ -105,8 +131,7 @@ class Hub:
                     elif msg.get("state") == "up":
                         await self._on_ptt_up()
                 elif msg.get("type") == "cancel":
-                    self.busy = False
-                    await self.broadcast({"type": "end"})
+                    await self._cancel()
         finally:
             self.clients.discard(ws)
 

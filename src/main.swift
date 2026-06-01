@@ -155,7 +155,9 @@ final class AssistantController: NSObject {
             send("{\"type\":\"ptt\",\"state\":\"down\"}")
         } else if listening {
             listening = false
-            send("{\"type\":\"ptt\",\"state\":\"up\"}")   // overlay stays until core sends "end"
+            send("{\"type\":\"ptt\",\"state\":\"up\"}")   // stop & process; overlay stays until "end"
+        } else {
+            send("{\"type\":\"cancel\"}")                 // thinking/speaking -> instant mute
         }
     }
 
